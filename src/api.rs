@@ -262,7 +262,9 @@ impl PastebinClient {
     }
 
     pub fn get_paste(&self, id: &str) -> Result<Paste> {
-        let resp = self.agent.get(&format!("{}/pastes/{}", BASE_URL, id)).call()?;
+        let url = format!("{}/pastes/{}", BASE_URL, id);
+        
+        let resp = self.agent.get(&url).call()?;
 
         let status = resp.status();
         let body = resp.into_string()?;
@@ -305,22 +307,31 @@ impl PastebinClient {
     }
 
     pub fn delete_paste(&self, id: &str) -> Result<()> {
-        let mut req = self.agent.delete(&format!("{}/account/pastes/{}", BASE_URL, id));
-
-        if let (Some(token), Some(paste_id)) = (&self.delete_token, &self.delete_paste_id) {
+        // Use different endpoint depending on auth type
+        let (_url, req) = if let (Some(token), Some(paste_id)) = (&self.delete_token, &self.delete_paste_id) {
             if paste_id == id {
-                req = req.set("X-Delete-Token", token);
+                // Anonymous paste: use public endpoint with X-Delete-Token
+                let url = format!("{}/pastes/{}", BASE_URL, id);
+                let req = self.agent.delete(&url).set("X-Delete-Token", token);
+                (url, req)
             } else if let Some(auth) = &self.auth_token {
-                req = req.set("Authorization", &format!("Bearer {}", auth));
+                // Wrong delete token for this paste, fall back to auth
+                let url = format!("{}/account/pastes/{}", BASE_URL, id);
+                let req = self.agent.delete(&url).set("Authorization", &format!("Bearer {}", auth));
+                (url, req)
             } else {
                 anyhow::bail!("No valid authentication for delete");
             }
         } else if let Some(auth) = &self.auth_token {
-            req = req.set("Authorization", &format!("Bearer {}", auth));
+            // Authenticated paste: use account endpoint with Bearer token
+            let url = format!("{}/account/pastes/{}", BASE_URL, id);
+            let req = self.agent.delete(&url).set("Authorization", &format!("Bearer {}", auth));
+            (url, req)
         } else {
             anyhow::bail!("No valid authentication for delete");
-        }
+        };
 
+        
         let resp = req.call()?;
         let status = resp.status();
 

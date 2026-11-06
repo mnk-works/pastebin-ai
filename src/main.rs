@@ -6,8 +6,7 @@ use clap::{Parser, Subcommand};
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 
-mod api;
-mod config;
+use pastebin_ai::{api, config};
 
 use api::{PastebinClient, CreatePasteRequest, Paste, PasteVisibility, PasteExpiration, PasteCategory};
 use config::{Config, AuthConfig};
