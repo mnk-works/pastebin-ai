@@ -6,7 +6,7 @@ description = "A pretty CLI for pastebin.ai ✨"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/mnk-works/pastebin-ai"
 readme = "README.md"
-keywords = ["pastebin", "cli", "pastebin.ai", "snippets"]
+keywords = ["pastebin", "cli", "snippets", "pastebin-ai"]
 categories = ["command-line-utilities", "web-programming"]
 
 [dependencies]
