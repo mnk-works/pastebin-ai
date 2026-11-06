@@ -380,8 +380,15 @@ fn get_content(content_arg: Option<String>, file_arg: Option<PathBuf>) -> Result
     } else if let Some(content) = content_arg {
         Ok(content)
     } else {
+        // Interactive multi-line input
+        eprintln!("{}", "📝 Enter paste content (Ctrl+D to finish, Ctrl+C to cancel):".dimmed());
+        eprintln!("{}", "─".repeat(50).dimmed());
+        
         let mut buffer = String::new();
         io::stdin().read_to_string(&mut buffer)?;
+        
+        eprintln!("{}", "─".repeat(50).dimmed());
+        
         if buffer.trim().is_empty() {
             anyhow::bail!("No content provided. Use argument, --file, or pipe to stdin.");
         }
