@@ -1,6 +1,6 @@
 [package]
 name = "pastebin-ai"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "A pretty CLI for pastebin.ai ✨"
 license = "MIT OR Apache-2.0"
