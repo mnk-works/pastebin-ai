@@ -181,7 +181,7 @@ fn main() -> Result<()> {
 }
 
 fn cmd_create(args: CreateArgs, emoji: bool) -> Result<()> {
-    let content = get_content(args.content, args.file)?;
+    let content = get_content(args.content, args.file, args.quiet)?;
 
     let client = PastebinClient::new()?;
 
@@ -374,20 +374,24 @@ fn cmd_config(_emoji: bool) -> Result<()> {
     Ok(())
 }
 
-fn get_content(content_arg: Option<String>, file_arg: Option<PathBuf>) -> Result<String> {
+fn get_content(content_arg: Option<String>, file_arg: Option<PathBuf>, quiet: bool) -> Result<String> {
     if let Some(file) = file_arg {
         std::fs::read_to_string(file).context("Failed to read file")
     } else if let Some(content) = content_arg {
         Ok(content)
     } else {
         // Interactive multi-line input
-        eprintln!("{}", "📝 Enter paste content (Ctrl+D to finish, Ctrl+C to cancel):".dimmed());
-        eprintln!("{}", "─".repeat(50).dimmed());
+        if !quiet {
+            eprintln!("{}", "📝 Enter paste content (Ctrl+D to finish, Ctrl+C to cancel):".dimmed());
+            eprintln!("{}", "─".repeat(50).dimmed());
+        }
         
         let mut buffer = String::new();
         io::stdin().read_to_string(&mut buffer)?;
         
-        eprintln!("{}", "─".repeat(50).dimmed());
+        if !quiet {
+            eprintln!("{}", "─".repeat(50).dimmed());
+        }
         
         if buffer.trim().is_empty() {
             anyhow::bail!("No content provided. Use argument, --file, or pipe to stdin.");
