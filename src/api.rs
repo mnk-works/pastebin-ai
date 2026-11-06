@@ -3,11 +3,15 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use ureq;
 
+/// Visibility level for a paste.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PasteVisibility {
+    /// Public: listed in public archive, searchable
     Public,
+    /// Unlisted: accessible via direct link only (default)
     Unlisted,
+    /// Private: only accessible by owner (requires authentication)
     Private,
 }
 
@@ -29,25 +33,35 @@ impl std::str::FromStr for PasteVisibility {
     }
 }
 
+/// Expiration duration for a paste.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PasteExpiration {
+    /// 10 minutes
     #[serde(rename = "10m")]
     Min10,
+    /// 1 hour
     #[serde(rename = "1h")]
     Hour1,
+    /// 1 day
     #[serde(rename = "1d")]
     Day1,
+    /// 1 week (default)
     #[serde(rename = "1w")]
     Week1,
+    /// 2 weeks
     #[serde(rename = "2w")]
     Week2,
+    /// 1 month
     #[serde(rename = "1m")]
     Month1,
+    /// 6 months
     #[serde(rename = "6m")]
     Month6,
+    /// 1 year
     #[serde(rename = "1y")]
     Year1,
+    /// Never expires
     Never,
 }
 
@@ -75,30 +89,21 @@ impl std::str::FromStr for PasteExpiration {
     }
 }
 
-impl PasteExpiration {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            PasteExpiration::Min10 => "10m",
-            PasteExpiration::Hour1 => "1h",
-            PasteExpiration::Day1 => "1d",
-            PasteExpiration::Week1 => "1w",
-            PasteExpiration::Week2 => "2w",
-            PasteExpiration::Month1 => "1m",
-            PasteExpiration::Month6 => "6m",
-            PasteExpiration::Year1 => "1y",
-            PasteExpiration::Never => "never",
-        }
-    }
-}
-
+/// Category classification for a paste.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PasteCategory {
+    /// Source code snippets
     Code,
+    /// Log files and stack traces
     Logs,
+    /// Configuration files (YAML, TOML, etc.)
     Configuration,
+    /// Data files (JSON, CSV, etc.)
     Data,
+    /// Documentation and markdown
     Documentation,
+    /// Other content
     Other,
 }
 
@@ -123,70 +128,108 @@ impl std::str::FromStr for PasteCategory {
     }
 }
 
-#[derive(Debug, Serialize)]
+/// Request payload for creating a new paste.
+#[derive(Debug, Serialize, Clone)]
 pub struct CreatePasteRequest {
+    /// The text content (required, max 1 MB UTF-8)
     pub content: String,
+    /// Optional title for the paste
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    /// Syntax highlighting language (e.g., "rust", "python", "json")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    /// Visibility level
     #[serde(skip_serializing_if = "Option::is_none")]
     pub visibility: Option<PasteVisibility>,
+    /// Expiration duration
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expiration: Option<PasteExpiration>,
+    /// Category classification
     #[serde(skip_serializing_if = "Option::is_none")]
     pub category: Option<PasteCategory>,
+    /// Comma- or space-separated tags (max 8 retained)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<String>,
+    /// Maximum unique views (1-1000)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_views: Option<u32>,
+    /// Password for protected access (4-128 chars)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
+    /// Delete after first read
     #[serde(skip_serializing_if = "Option::is_none")]
     pub burn_after_read: Option<bool>,
+    /// Folder ID (requires auth)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub folder_id: Option<u64>,
+    /// Content is pre-encrypted ciphertext
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encrypted: Option<bool>,
 }
 
+/// Response from successful paste creation.
 #[derive(Debug, Deserialize)]
 pub struct PasteCreated {
+    /// Unique paste ID
     pub id: String,
+    /// Web UI URL for the paste
     pub url: String,
+    /// Raw content URL
     pub raw_url: String,
+    /// Token for anonymous deletion (save this!)
     pub delete_token: String,
+    /// Expiration timestamp (if applicable)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<String>,
+    /// Maximum views limit (if set)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_views: Option<u32>,
 }
 
+/// Paste metadata and content.
 #[derive(Debug, Deserialize)]
 pub struct Paste {
+    /// Unique paste ID
     pub id: String,
+    /// Paste title (if set)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    /// Paste content
     pub content: String,
+    /// Syntax highlighting language
     pub language: String,
+    /// Visibility level
     pub visibility: String,
+    /// View count
     pub views: u32,
+    /// Creation timestamp
     pub created_at: String,
+    /// Expiration timestamp (if applicable)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<String>,
+    /// Maximum views limit (if set)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_views: Option<u32>,
+    /// Last update timestamp (if updated)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
+    /// Web UI URL (for owned pastes)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    /// Category (if set)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub category: Option<String>,
+    /// Tags (if set)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<String>,
+    /// Burn after read flag
     #[serde(skip_serializing_if = "Option::is_none")]
     pub burn_after_read: Option<bool>,
+    /// Encrypted flag
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encrypted: Option<bool>,
+    /// Folder ID (if in folder)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub folder_id: Option<u64>,
 }
@@ -195,11 +238,16 @@ pub struct Paste {
 struct ErrorResponse {
     error: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    retry_after: Option<u64>,
+    _retry_after: Option<u64>,
 }
 
 const BASE_URL: &str = "https://pastebin.ai/api/v1";
 
+/// HTTP client for the pastebin.ai API.
+///
+/// Supports both anonymous and authenticated operations.
+/// Use `new()` for anonymous access, `with_token()` for authenticated access,
+/// or `with_delete_token()` to delete an anonymous paste using its delete token.
 pub struct PastebinClient {
     agent: ureq::Agent,
     auth_token: Option<String>,
@@ -208,6 +256,7 @@ pub struct PastebinClient {
 }
 
 impl PastebinClient {
+    /// Create a new anonymous client.
     pub fn new() -> Result<Self> {
         let agent = ureq::AgentBuilder::new()
             .timeout_connect(Duration::from_secs(10))
@@ -223,12 +272,18 @@ impl PastebinClient {
         })
     }
 
+    /// Create an authenticated client with a Bearer token.
+    ///
+    /// Get your token from <https://pastebin.ai/settings/api> (starts with `pba_`).
     pub fn with_token(token: &str) -> Result<Self> {
         let mut client = Self::new()?;
         client.auth_token = Some(token.to_string());
         Ok(client)
     }
 
+    /// Create a client for deleting a specific anonymous paste.
+    ///
+    /// Use the delete token returned when creating the paste.
     pub fn with_delete_token(paste_id: &str, token: &str) -> Result<Self> {
         let mut client = Self::new()?;
         client.delete_token = Some(token.to_string());
@@ -236,16 +291,11 @@ impl PastebinClient {
         Ok(client)
     }
 
-    fn request_with_auth(&self, req: ureq::Request) -> ureq::Request {
-        if let Some(token) = &self.auth_token {
-            req.set("Authorization", &format!("Bearer {}", token))
-        } else {
-            req
-        }
-    }
-
+    /// Create a new paste.
+    ///
+    /// Returns [`PasteCreated`] with the paste URL, raw URL, and delete token.
     pub fn create_paste(&self, request: CreatePasteRequest) -> Result<PasteCreated> {
-        let mut req = self.agent.post(&format!("{}/pastes", BASE_URL)).send_json(&request)?;
+        let req = self.agent.post(&format!("{}/pastes", BASE_URL)).send_json(&request)?;
 
         let status = req.status();
         let body = req.into_string()?;
@@ -255,15 +305,19 @@ impl PastebinClient {
         } else {
             let err: ErrorResponse = serde_json::from_str(&body).unwrap_or(ErrorResponse {
                 error: format!("HTTP {}", status),
-                retry_after: None,
+                _retry_after: None,
             });
             anyhow::bail!("API error: {}", err.error);
         }
     }
 
+    /// Retrieve a paste by ID.
+    ///
+    /// Works for public and unlisted pastes. Private/password-protected/encrypted
+    /// pastes require authentication and return 404.
     pub fn get_paste(&self, id: &str) -> Result<Paste> {
         let url = format!("{}/pastes/{}", BASE_URL, id);
-        
+
         let resp = self.agent.get(&url).call()?;
 
         let status = resp.status();
@@ -276,12 +330,15 @@ impl PastebinClient {
         } else {
             let err: ErrorResponse = serde_json::from_str(&body).unwrap_or(ErrorResponse {
                 error: format!("HTTP {}", status),
-                retry_after: None,
+                _retry_after: None,
             });
             anyhow::bail!("API error: {}", err.error);
         }
     }
 
+    /// List pastes owned by the authenticated account.
+    ///
+    /// Requires authentication via `with_token()`. Returns up to `limit` pastes.
     pub fn list_pastes(&self, limit: usize) -> Result<Vec<Paste>> {
         let token = self.auth_token.as_ref()
             .ok_or_else(|| anyhow::anyhow!("Authentication required"))?;
@@ -300,12 +357,17 @@ impl PastebinClient {
         } else {
             let err: ErrorResponse = serde_json::from_str(&body).unwrap_or(ErrorResponse {
                 error: format!("HTTP {}", status),
-                retry_after: None,
+                _retry_after: None,
             });
             anyhow::bail!("API error: {}", err.error);
         }
     }
 
+    /// Delete a paste.
+    ///
+    /// For anonymous pastes created with this client's delete token, uses the
+    /// public delete endpoint with `X-Delete-Token` header.
+    /// For authenticated pastes, uses the account endpoint with Bearer token.
     pub fn delete_paste(&self, id: &str) -> Result<()> {
         // Use different endpoint depending on auth type
         let (_url, req) = if let (Some(token), Some(paste_id)) = (&self.delete_token, &self.delete_paste_id) {
@@ -331,7 +393,6 @@ impl PastebinClient {
             anyhow::bail!("No valid authentication for delete");
         };
 
-        
         let resp = req.call()?;
         let status = resp.status();
 
@@ -343,7 +404,7 @@ impl PastebinClient {
             let body = resp.into_string()?;
             let err: ErrorResponse = serde_json::from_str(&body).unwrap_or(ErrorResponse {
                 error: format!("HTTP {}", status),
-                retry_after: None,
+                _retry_after: None,
             });
             anyhow::bail!("API error: {}", err.error);
         }

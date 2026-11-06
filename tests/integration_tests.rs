@@ -9,6 +9,7 @@ fn test_client() -> Result<PastebinClient> {
     PastebinClient::new()
 }
 
+/// Create a test paste with retry on rate limit (429).
 fn create_test_paste(content: &str, title: &str) -> Result<(String, String)> {
     let client = test_client()?;
     let request = CreatePasteRequest {
@@ -25,8 +26,19 @@ fn create_test_paste(content: &str, title: &str) -> Result<(String, String)> {
         folder_id: None,
         encrypted: None,
     };
-    let response = client.create_paste(request)?;
-    Ok((response.id, response.delete_token))
+    
+    // Retry with exponential backoff on rate limit
+    let mut attempt = 0;
+    loop {
+        match client.create_paste(request.clone()) {
+            Ok(response) => return Ok((response.id, response.delete_token)),
+            Err(e) if e.to_string().contains("429") && attempt < 5 => {
+                attempt += 1;
+                std::thread::sleep(Duration::from_millis(1000 * attempt));
+            }
+            Err(e) => return Err(e),
+        }
+    }
 }
 
 fn cleanup_paste(id: &str, delete_token: &str) -> Result<()> {
@@ -45,6 +57,7 @@ fn verify_paste_exists(id: &str) -> Result<bool> {
 
 #[test]
 fn test_create_basic_paste() -> Result<()> {
+    
     let (id, delete_token) = create_test_paste(
         "Basic paste content\nwith multiple lines",
         "Basic Paste Test"
@@ -105,6 +118,7 @@ fn test_create_paste_with_all_options() -> Result<()> {
 
 #[test]
 fn test_create_paste_burn_after_read() -> Result<()> {
+    
     let (id, delete_token) = create_test_paste(
         "Burn after read test content",
         "Burn After Read Test"
@@ -124,6 +138,7 @@ fn test_create_paste_burn_after_read() -> Result<()> {
 
 #[test]
 fn test_get_nonexistent_paste() -> Result<()> {
+    
     let client = test_client()?;
     let result = client.get_paste("nonexistent_id_12345");
     assert!(result.is_err());
@@ -133,6 +148,7 @@ fn test_get_nonexistent_paste() -> Result<()> {
 
 #[test]
 fn test_create_and_get_raw() -> Result<()> {
+    
     let (id, delete_token) = create_test_paste(
         "Raw content test\nLine 2\nLine 3",
         "Raw Content Test"
@@ -151,6 +167,7 @@ fn test_create_and_get_raw() -> Result<()> {
 
 #[test]
 fn test_unicode_content() -> Result<()> {
+    
     let (id, delete_token) = create_test_paste(
         "Unicode: 你好 🌍 café ñoño 🦀\nEmoji: ✨🚀💻\nCyrillic: привет",
         "Unicode Test"
@@ -170,6 +187,7 @@ fn test_unicode_content() -> Result<()> {
 
 #[test]
 fn test_large_paste() -> Result<()> {
+    
     // Create a paste near the 1MB limit
     let large_content = "x".repeat(900_000); // 900KB
     let (id, delete_token) = create_test_paste(
@@ -188,6 +206,7 @@ fn test_large_paste() -> Result<()> {
 
 #[test]
 fn test_delete_with_invalid_token() -> Result<()> {
+    
     let (id, _delete_token) = create_test_paste(
         "Content for invalid token test",
         "Invalid Token Test"
@@ -209,15 +228,17 @@ fn test_delete_with_invalid_token() -> Result<()> {
 
 #[test]
 fn test_concurrent_pastes() -> Result<()> {
+    
     let mut paste_ids = Vec::new();
 
-    // Create multiple pastes
+    // Create multiple pastes with small delays to avoid rate limits
     for i in 0..5 {
         let (id, delete_token) = create_test_paste(
             &format!("Concurrent test paste #{}", i),
             &format!("Concurrent Test #{}", i)
         )?;
         paste_ids.push((id, delete_token));
+        std::thread::sleep(Duration::from_millis(300));
     }
 
     // Verify all exist
@@ -237,6 +258,7 @@ fn test_concurrent_pastes() -> Result<()> {
 
 #[test]
 fn test_paste_metadata() -> Result<()> {
+    
     let (id, delete_token) = create_test_paste(
         "Metadata test content",
         "Metadata Test"
@@ -262,6 +284,7 @@ fn test_paste_metadata() -> Result<()> {
 
 #[test]
 fn test_special_characters_in_content() -> Result<()> {
+    
     let special_content = r#"Special chars: "quotes" 'single' `backticks` $dollar &ampersand <angle> |pipe
 Newlines:
 	Tabs:
